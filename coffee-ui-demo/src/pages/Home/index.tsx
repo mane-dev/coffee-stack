@@ -1,52 +1,72 @@
 import React, { useEffect, useState } from "react";
 // import { Pressure } from "../../Components/Pressure/Pressure";
-import { io } from "socket.io-client";
 import { roundPrecision } from "../../Utils";
 import "../../index.css";
 
-const socket = io("http://0.0.0.0:5000");
+const wss = new WebSocket("ws://localhost:8080");
+
+const startSimulation = {
+  type: "start_simulation",
+}
+
+
+interface SensorReads {
+  temperature: number;
+  pressure: number;
+  flow: number;
+  weight: number;
+  }
+
 
 export default function () {
-  const [temperature, setTemperature] = useState<number>(90.0);
-  const [pressure, setPressure] = useState<number>(9.0);
-  const [flow, setFlow] = useState<number>(1.0);
-  const [weight, setWeight] = useState<number>(0);
-
+  const [sensorReads, setSensorReads] = useState<SensorReads>({flow: 1, pressure: 9, temperature: 90, weight: 0});
+  const { temperature, pressure, flow, weight } = sensorReads;
   useEffect(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    socket.on("pressure", function (data: any) {
-      setPressure(data);
-    });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    socket.on("temperature", function (data: any) {
-      setTemperature(data);
-    });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    socket.on("flow", function (data: any) {
-      setFlow(data);
-    });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    socket.on("weight", function (data: any) {
-      setWeight(data);
-    });
-  }, []);
+    wss.onopen = function (event) {
+      console.log("conected...");
+      wss.send(JSON.stringify(startSimulation));
+      wss.onmessage = function (event) {
+        const readings = JSON.parse(event.data);
+        setSensorReads(readings);
+      }
+    }
+  }, [])
 
-  const request = () => {
-    setInterval(() => {
-      socket.emit(
-        "send-get",
-        Math.random(),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (err: any, res: any) => {
-          console.log(res);
-        }
-      );
-    }, 100);
-  };
+  // useEffect(() => {
+  //   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  //   socket.on("pressure", function (data: any) {
+  //     setPressure(data);
+  //   });
+  //   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  //   socket.on("temperature", function (data: any) {
+  //     setTemperature(data);
+  //   });
+  //   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  //   socket.on("flow", function (data: any) {
+  //     setFlow(data);
+  //   });
+  //   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  //   socket.on("weight", function (data: any) {
+  //     setWeight(data);
+  //   });
+  // }, []);
 
-  const request2 = () => {
-    socket.emit("live", "demo");
-  };
+  // const request = () => {
+  //   setInterval(() => {
+  //     socket.emit(
+  //       "send-get",
+  //       Math.random(),
+  //       // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  //       (err: any, res: any) => {
+  //         console.log(res);
+  //       }
+  //     );
+  //   }, 100);
+  // };
+
+  // const request2 = () => {
+  //   socket.emit("live", "demo");
+  // };
 
   return (
     <div>
@@ -67,7 +87,7 @@ export default function () {
       <button
         type="button"
         onClick={() => {
-          request();
+          console.log("clicked");
         }}
       >
         Send
@@ -76,7 +96,7 @@ export default function () {
       <button
         type="button"
         onClick={() => {
-          request2();
+          console.log("clicked");
         }}
       >
         Get
